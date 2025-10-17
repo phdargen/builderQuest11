@@ -80,7 +80,16 @@ export async function getUserRating(
   universalAddress: string
 ): Promise<RatingRecord | null> {
   const rating = await redis.hget(`article:${slug}:ratings`, universalAddress);
-  return rating ? JSON.parse(rating as string) : null;
+  if (!rating) return null;
+  // Handle both string and already-parsed object formats
+  if (typeof rating === 'string') {
+    return JSON.parse(rating) as RatingRecord;
+  }
+  // Ensure the rating object has the required RatingRecord properties
+  if (rating && typeof rating === 'object' && 'score' in rating && 'timestamp' in rating) {
+    return rating as RatingRecord;
+  }
+  return null;
 }
 
 // Helper function to get stats for a single article
@@ -90,15 +99,24 @@ export async function getArticleStats(slug: string): Promise<ArticleStats> {
     redis.hgetall(`article:${slug}:ratings`),
   ]);
 
-  const purchaseRecords = purchases as Record<string, string> || {};
-  const ratingRecords = ratings as Record<string, string> || {};
+  const purchaseRecords = purchases as Record<string, any> || {};
+  const ratingRecords = ratings as Record<string, any> || {};
 
   const purchasedBy = Object.keys(purchaseRecords);
   const totalPurchases = purchasedBy.length;
 
   // Parse all purchase records and sort by timestamp (most recent first)
   const allPurchases: PurchaseRecord[] = Object.values(purchaseRecords)
-    .map((record) => JSON.parse(record) as PurchaseRecord)
+    .map((record) => {
+      // Handle both string and already-parsed object formats
+      if (typeof record === 'string') {
+        return JSON.parse(record) as PurchaseRecord;
+      } else if (record && typeof record === 'object' && 'universalAddress' in record && 'timestamp' in record) {
+        return record as PurchaseRecord;
+      }
+      return null;
+    })
+    .filter((record): record is PurchaseRecord => record !== null)
     .sort((a, b) => b.timestamp - a.timestamp);
 
   const recentPurchases = allPurchases.slice(0, 10); // Last 10 purchases
@@ -114,7 +132,18 @@ export async function getArticleStats(slug: string): Promise<ArticleStats> {
 
   if (totalRatings > 0) {
     const sum = ratingValues.reduce(
-      (acc, record) => acc + JSON.parse(record).score,
+      (acc, record) => {
+        // Handle both string and already-parsed object formats
+        let ratingData: RatingRecord;
+        if (typeof record === 'string') {
+          ratingData = JSON.parse(record) as RatingRecord;
+        } else if (record && typeof record === 'object' && 'score' in record && 'timestamp' in record) {
+          ratingData = record as RatingRecord;
+        } else {
+          return acc; // Skip invalid records
+        }
+        return acc + ratingData.score;
+      },
       0
     );
     averageScore = sum / totalRatings;
@@ -152,15 +181,24 @@ export async function getMultipleArticlesStats(
     const purchasesIndex = index * 2;
     const ratingsIndex = index * 2 + 1;
 
-    const purchases = (results[purchasesIndex] as Record<string, string>) || {};
-    const ratings = (results[ratingsIndex] as Record<string, string>) || {};
+    const purchases = (results[purchasesIndex] as Record<string, any>) || {};
+    const ratings = (results[ratingsIndex] as Record<string, any>) || {};
 
     const purchasedBy = Object.keys(purchases);
     const totalPurchases = purchasedBy.length;
 
     // Parse all purchase records and sort by timestamp (most recent first)
     const allPurchases: PurchaseRecord[] = Object.values(purchases)
-      .map((record) => JSON.parse(record) as PurchaseRecord)
+      .map((record) => {
+        // Handle both string and already-parsed object formats
+        if (typeof record === 'string') {
+          return JSON.parse(record) as PurchaseRecord;
+        } else if (record && typeof record === 'object' && 'universalAddress' in record && 'timestamp' in record) {
+          return record as PurchaseRecord;
+        }
+        return null;
+      })
+      .filter((record): record is PurchaseRecord => record !== null)
       .sort((a, b) => b.timestamp - a.timestamp);
 
     const recentPurchases = allPurchases.slice(0, 10); // Last 10 purchases
@@ -176,7 +214,18 @@ export async function getMultipleArticlesStats(
 
     if (totalRatings > 0) {
       const sum = ratingValues.reduce(
-        (acc, record) => acc + JSON.parse(record).score,
+        (acc, record) => {
+          // Handle both string and already-parsed object formats
+          let ratingData: RatingRecord;
+          if (typeof record === 'string') {
+            ratingData = JSON.parse(record) as RatingRecord;
+          } else if (record && typeof record === 'object' && 'score' in record && 'timestamp' in record) {
+            ratingData = record as RatingRecord;
+          } else {
+            return acc; // Skip invalid records
+          }
+          return acc + ratingData.score;
+        },
         0
       );
       averageScore = sum / totalRatings;

@@ -50,6 +50,7 @@ DEBUG_MODE=true
 # AWS S3 Configuration (only required if DEBUG_MODE=false)
 # AWS_REGION=us-east-1
 # AWS_S3_BUCKET_NAME=your-bucket-name
+# AWS_S3_IMAGES_BUCKET_NAME=your-images-bucket-name (optional, defaults to AWS_S3_BUCKET_NAME if not set)
 # AWS_ACCESS_KEY_ID=your-access-key
 # AWS_SECRET_ACCESS_KEY=your-secret-key
 
@@ -201,6 +202,7 @@ To use AWS S3 for article storage in production:
    DEBUG_MODE=false
    AWS_REGION=us-east-1
    AWS_S3_BUCKET_NAME=basednews-articles
+   AWS_S3_IMAGES_BUCKET_NAME=basednews-images
    AWS_ACCESS_KEY_ID=your-access-key
    AWS_SECRET_ACCESS_KEY=your-secret-key
    ```

@@ -33,6 +33,7 @@ if (!DEBUG_MODE) {
 }
 
 const S3_BUCKET = process.env.AWS_S3_BUCKET_NAME || "";
+const S3_IMAGES_BUCKET = process.env.AWS_S3_IMAGES_BUCKET_NAME || S3_BUCKET;
 
 /**
  * Load all articles from storage (S3 or local file)
@@ -94,14 +95,14 @@ export async function uploadImage(
 
     await s3Client.send(
       new PutObjectCommand({
-        Bucket: S3_BUCKET,
+        Bucket: S3_IMAGES_BUCKET,
         Key: uniqueFilename,
         Body: imageBuffer,
         ContentType: getContentType(filename),
       })
     );
 
-    return `https://${S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueFilename}`;
+    return `https://${S3_IMAGES_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueFilename}`;
   }
 }
 

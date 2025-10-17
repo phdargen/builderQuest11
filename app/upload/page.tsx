@@ -6,10 +6,12 @@ import Link from "next/link";
 import { useBaseAccount } from "../providers";
 import { wrapFetchWithPayment } from "x402-fetch";
 import { createWalletClient, custom, parseUnits, encodeFunctionData } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base, baseSepolia } from "viem/chains";
 import { getUserInfoClient } from "@/lib/neynar";
+import { erc20Abi } from "viem";
 
-const USDC_BASE_SEPOLIA = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+const USDC_BASE_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS;
+const chain = process.env.NEXT_PUBLIC_NETWORK === "base" ? base : baseSepolia;
 
 // Content limits (configurable via environment variables)
 const MAX_TITLE_LENGTH = parseInt(process.env.NEXT_PUBLIC_MAX_TITLE_LENGTH || "150", 10);
@@ -18,19 +20,6 @@ const MAX_BODY_LENGTH = parseInt(process.env.NEXT_PUBLIC_MAX_BODY_LENGTH || "500
 const MAX_IMAGE_SIZE_MB = parseInt(process.env.NEXT_PUBLIC_MAX_IMAGE_SIZE_MB || "5", 10);
 const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 
-const ERC20_ABI = [
-  {
-    inputs: [
-      { name: "to", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    name: "transfer",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
 export default function UploadPage() {
   const router = useRouter();
   const { connected, provider, subAccountAddress, universalAddress } = useBaseAccount();
@@ -38,7 +27,7 @@ export default function UploadPage() {
   const [title, setTitle] = useState("");
   const [teaser, setTeaser] = useState("");
   const [body, setBody] = useState("");
-  const [priceUsd, setPriceUsd] = useState("0.003");
+  const [priceUsd, setPriceUsd] = useState("0.01");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -151,11 +140,11 @@ export default function UploadPage() {
     setSuccess("");
 
     try {
-      // Step 1: Self-transfer to ensure USDC balance
+      // Self-transfer to ensure USDC balance
       const paymentAmount = parseUnits("0.10", 6); // $0.10 USDC
       
       const transferData = encodeFunctionData({
-        abi: ERC20_ABI,
+        abi: erc20Abi,
         functionName: "transfer",
         args: [subAccountAddress as `0x${string}`, paymentAmount],
       });
@@ -166,11 +155,11 @@ export default function UploadPage() {
           {
             version: "2.0",
             atomicRequired: true,
-            chainId: `0x${baseSepolia.id.toString(16)}`,
+            chainId: `0x${chain.id.toString(16)}`,
             from: subAccountAddress,
             calls: [
               {
-                to: USDC_BASE_SEPOLIA,
+                to: USDC_BASE_ADDRESS as `0x${string}`,
                 data: transferData,
                 value: "0x0",
               },
@@ -182,16 +171,16 @@ export default function UploadPage() {
       console.log("Self-transfer transaction sent:", callsId);
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // Step 2: Create wallet client for payment
+      // Create wallet client for payment
       const walletClient = createWalletClient({
         account: subAccountAddress as `0x${string}`,
-        chain: baseSepolia,
+        chain,
         transport: custom(provider),
       });
 
       const fetchWithPayment = wrapFetchWithPayment(fetch, walletClient as any);
 
-      // Step 3: Prepare form data
+      // Prepare form data
       const formData = new FormData();
       formData.append("title", title);
       formData.append("teaser", teaser);
@@ -205,7 +194,7 @@ export default function UploadPage() {
         formData.append("imageUrl", imageUrl);
       }
 
-      // Step 4: Upload with payment (retry logic)
+      // Upload with payment (retry logic)
       const maxRetries = 5;
       let lastError: Error | null = null;
 
@@ -370,7 +359,7 @@ export default function UploadPage() {
               step="0.01"
               className="input"
               style={{ width: "200px" }}
-              placeholder="0.003"
+              placeholder="0.01"
             />
           </div>
 

@@ -7,25 +7,14 @@ import { ArticleStats } from "@/lib/redis";
 import { useBaseAccount } from "./providers";
 import { wrapFetchWithPayment } from "x402-fetch";
 import { createWalletClient, custom, parseUnits, encodeFunctionData } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base, baseSepolia } from "viem/chains";
 import Link from "next/link";
 import { getUserInfoClient, type NeynarUserInfo } from "@/lib/neynar";
 import Avatar from "./components/Avatar";
+import { erc20Abi } from "viem";
 
-const USDC_BASE_SEPOLIA = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
-
-const ERC20_ABI = [
-  {
-    inputs: [
-      { name: "to", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    name: "transfer",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
+const USDC_BASE_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS;
+const chain = process.env.NEXT_PUBLIC_NETWORK === "base" ? base : baseSepolia;
 
 type SortOption = "recent" | "popular" | "top-rated";
 
@@ -115,7 +104,7 @@ export default function Home() {
       const paymentAmount = parseUnits(priceValue, 6);
       
       const transferData = encodeFunctionData({
-        abi: ERC20_ABI,
+        abi: erc20Abi,
         functionName: "transfer",
         args: [subAccountAddress as `0x${string}`, paymentAmount],
       });
@@ -126,11 +115,11 @@ export default function Home() {
           {
             version: "2.0",
             atomicRequired: true,
-            chainId: `0x${baseSepolia.id.toString(16)}`,
+            chainId: `0x${chain.id.toString(16)}`,
             from: subAccountAddress,
             calls: [
               {
-                to: USDC_BASE_SEPOLIA,
+                to: USDC_BASE_ADDRESS,
                 data: transferData,
                 value: "0x0",
               },
@@ -163,7 +152,7 @@ export default function Home() {
 
       const walletClient = createWalletClient({
         account: subAccountAddress as `0x${string}`,
-        chain: baseSepolia,
+        chain,
         transport: custom(provider),
       });
 
@@ -318,21 +307,24 @@ export default function Home() {
               averageScore: null,
               lastPurchaseTimestamp: null,
               purchasedBy: [],
+              recentPurchases: [],
               totalRatings: 0,
             };
             
             return (
             <div key={article.slug} className="article-card">
               {article.imageUrl && (
-                <div
-                  className="article-image"
-                  style={{ backgroundImage: `url(${article.imageUrl})` }}
-                />
+                <div className="article-image">
+                  <img 
+                    src={article.imageUrl} 
+                    alt={article.title}
+                  />
+                </div>
               )}
               <div className="article-content">
                 <h2 className="article-title">{article.title}</h2>
                 <p className="article-teaser">{article.teaser}</p>
-                <div style={{ fontSize: "0.85rem", color: "#666", marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ fontSize: "0.85rem", color: "#ccc", marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
                   <Avatar 
                     pfpUrl={article.authorPfpUrl} 
                     displayName={article.authorDisplayName} 
@@ -359,6 +351,38 @@ export default function Home() {
                       </span>
                     )}
                   </div>
+                  {stats.recentPurchases && stats.recentPurchases.length > 0 && (
+                    <div style={{ marginTop: "8px" }}>
+                      <div style={{ fontSize: "0.8rem", marginBottom: "6px", opacity: 0.8 }}>
+                        Recent purchasers:
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {stats.recentPurchases.slice(0, 10).map((purchase) => (
+                          <div
+                            key={purchase.universalAddress}
+                            title={purchase.displayName}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              background: "rgba(255, 255, 255, 0.05)",
+                              padding: "4px 8px",
+                              borderRadius: "8px",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              fontSize: "0.75rem",
+                            }}
+                          >
+                            <Avatar 
+                              pfpUrl={purchase.pfpUrl} 
+                              displayName={purchase.displayName} 
+                              size={20} 
+                            />
+                            <span>{purchase.displayName}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="article-footer-vertical">
                   {errors[article.slug] && (

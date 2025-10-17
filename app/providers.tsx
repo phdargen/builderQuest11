@@ -2,7 +2,9 @@
 
 import { createBaseAccountSDK } from "@base-org/account";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { baseSepolia } from "viem/chains";
+import { base, baseSepolia } from "viem/chains";
+
+const chain = process.env.NEXT_PUBLIC_NETWORK === "base" ? base : baseSepolia;
 
 interface BaseAccountContextType {
   provider: ReturnType<ReturnType<typeof createBaseAccountSDK>["getProvider"]> | null;
@@ -42,12 +44,15 @@ export function Providers({ children }: { children: ReactNode }) {
         const sdkInstance = createBaseAccountSDK({
           appName: "Based News",
           appLogoUrl: "https://base.org/logo.png",
-          appChainIds: [baseSepolia.id],
+          appChainIds: [chain.id],
           // Quickstart configuration for sub accounts with spend permissions
           subAccounts: {
             creation: "on-connect",
             defaultAccount: "sub",
             funding: "spend-permissions", // This enables automatic spend permissions
+          },
+          paymasterUrls: {
+            [chain.id]: process.env.NEXT_PUBLIC_PAYMASTER_URL as string,
           },
         });
 

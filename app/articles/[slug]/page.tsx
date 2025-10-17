@@ -175,10 +175,12 @@ export default function ArticlePage() {
         </Link>
 
         {article.imageUrl && (
-          <div
-            className="article-hero-image"
-            style={{ backgroundImage: `url(${article.imageUrl})` }}
-          />
+          <div className="article-hero-image">
+            <img 
+              src={article.imageUrl} 
+              alt={article.title}
+            />
+          </div>
         )}
 
         <div className="article-header">

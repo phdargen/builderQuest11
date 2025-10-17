@@ -1,31 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Article } from "@/lib/articles";
 import { ArticleStats } from "@/lib/redis";
 import { useBaseAccount } from "../providers";
 import { wrapFetchWithPayment } from "x402-fetch";
-import { createWalletClient, custom, parseUnits, encodeFunctionData } from "viem";
-import { baseSepolia } from "viem/chains";
+import { createWalletClient, custom, parseUnits, encodeFunctionData, formatUnits, createPublicClient, http } from "viem";
+import { base, baseSepolia } from "viem/chains";
 import Link from "next/link";
 import { getUserInfoClient, type NeynarUserInfo } from "@/lib/neynar";
 import Avatar from "../components/Avatar";
+import { erc20Abi } from "viem";
+import { fetchPermissions, getPermissionStatus, prepareRevokeCallData, requestSpendPermission, prepareSpendCallData } from "@base-org/account/spend-permission";
 
-const USDC_BASE_SEPOLIA = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
-
-const ERC20_ABI = [
-  {
-    inputs: [
-      { name: "to", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    name: "transfer",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
+const USDC_BASE_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS;
+const chain = process.env.NEXT_PUBLIC_NETWORK === "base" ? base : baseSepolia;
 
 export default function AccountPage() {
   const router = useRouter();
@@ -36,6 +26,23 @@ export default function AccountPage() {
   const [loadingArticles, setLoadingArticles] = useState(true);
   const [statsMap, setStatsMap] = useState<Record<string, ArticleStats>>({});
   const [userInfo, setUserInfo] = useState<NeynarUserInfo | null>(null);
+  
+  // Admin features state
+  const [universalBalance, setUniversalBalance] = useState<string | null>(null);
+  const [subBalance, setSubBalance] = useState<string | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [permissions, setPermissions] = useState<any[]>([]);
+  const [checkingPermissions, setCheckingPermissions] = useState(false);
+  const [revokingPermissionId, setRevokingPermissionId] = useState<number | null>(null);
+  const [requestingPermission, setRequestingPermission] = useState(false);
+  const [allowanceAmount, setAllowanceAmount] = useState("10");
+  const [periodInDays, setPeriodInDays] = useState("30");
+  const [spendingFromPermission, setSpendingFromPermission] = useState<number | null>(null);
+  const [spendAmount, setSpendAmount] = useState("1");
+  const [recipientAddress, setRecipientAddress] = useState("");
+  const [usdcAmount, setUsdcAmount] = useState("1");
+  const [sendLoading, setSendLoading] = useState(false);
+  const [sendStatus, setSendStatus] = useState("Ready");
 
   // Load articles and stats
   useEffect(() => {
@@ -88,6 +95,89 @@ export default function AccountPage() {
     fetchUserInfo();
   }, [universalAddress, connected]);
 
+  // Fetch balances
+  const fetchBalances = useCallback(async () => {
+    if (!universalAddress && !subAccountAddress) return;
+
+    setBalanceLoading(true);
+    try {
+      const publicClient = createPublicClient({
+        chain,
+        transport: http(),
+      });
+
+      if (universalAddress) {
+        const balance = await publicClient.readContract({
+          address: USDC_BASE_ADDRESS as `0x${string}`,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [universalAddress as `0x${string}`],
+        });
+        setUniversalBalance(formatUnits(balance as bigint, 6));
+      }
+
+      if (subAccountAddress) {
+        const balance = await publicClient.readContract({
+          address: USDC_BASE_ADDRESS as `0x${string}`,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [subAccountAddress as `0x${string}`],
+        });
+        setSubBalance(formatUnits(balance as bigint, 6));
+      }
+    } catch (err) {
+      console.error("Error fetching balances:", err);
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, [universalAddress, subAccountAddress]);
+
+  useEffect(() => {
+    if (connected && (universalAddress || subAccountAddress)) {
+      fetchBalances();
+      const interval = setInterval(fetchBalances, 30000); // 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [connected, universalAddress, subAccountAddress, fetchBalances]);
+
+  // Check permissions
+  const checkPermissions = useCallback(async () => {
+    if (!provider || !universalAddress || !subAccountAddress) return;
+
+    setCheckingPermissions(true);
+    try {
+      const perms = await fetchPermissions({
+        account: universalAddress,
+        chainId: chain.id,
+        spender: subAccountAddress,
+        provider,
+      });
+
+      const permissionsWithStatus = await Promise.all(
+        perms.map(async (perm) => {
+          try {
+            const status = await getPermissionStatus(perm);
+            return { ...perm, status };
+          } catch (err) {
+            return { ...perm, status: null, error: err };
+          }
+        })
+      );
+
+      setPermissions(permissionsWithStatus);
+    } catch (err) {
+      console.error("Error checking permissions:", err);
+    } finally {
+      setCheckingPermissions(false);
+    }
+  }, [provider, universalAddress, subAccountAddress]);
+
+  useEffect(() => {
+    if (connected && provider && universalAddress && subAccountAddress) {
+      checkPermissions();
+    }
+  }, [connected, provider, universalAddress, subAccountAddress, checkPermissions]);
+
   const unlockArticle = async (slug: string, priceUsd: string) => {
     if (!connected) {
       setErrors(prev => ({ ...prev, [slug]: "Please connect your wallet first" }));
@@ -107,7 +197,7 @@ export default function AccountPage() {
       const paymentAmount = parseUnits(priceValue, 6);
       
       const transferData = encodeFunctionData({
-        abi: ERC20_ABI,
+        abi: erc20Abi,
         functionName: "transfer",
         args: [subAccountAddress as `0x${string}`, paymentAmount],
       });
@@ -118,11 +208,11 @@ export default function AccountPage() {
           {
             version: "2.0",
             atomicRequired: true,
-            chainId: `0x${baseSepolia.id.toString(16)}`,
+            chainId: `0x${chain.id.toString(16)}`,
             from: subAccountAddress,
             calls: [
               {
-                to: USDC_BASE_SEPOLIA,
+                to: USDC_BASE_ADDRESS as `0x${string}`,
                 data: transferData,
                 value: "0x0",
               },
@@ -155,7 +245,7 @@ export default function AccountPage() {
 
       const walletClient = createWalletClient({
         account: subAccountAddress as `0x${string}`,
-        chain: baseSepolia,
+        chain,
         transport: custom(provider),
       });
 
@@ -201,6 +291,231 @@ export default function AccountPage() {
       setLoadingArticle(null);
     }
   };
+
+  const sendUSDC = useCallback(async () => {
+    if (!provider || !subAccountAddress || !recipientAddress) {
+      setSendStatus("Missing required fields");
+      return;
+    }
+
+    if (parseFloat(usdcAmount) <= 0) {
+      setSendStatus("Amount must be greater than 0");
+      return;
+    }
+
+    setSendLoading(true);
+    setSendStatus("Preparing USDC transfer...");
+
+    try {
+      const amountInUnits = parseUnits(usdcAmount, 6);
+
+      const data = encodeFunctionData({
+        abi: erc20Abi,
+        functionName: "transfer",
+        args: [recipientAddress as `0x${string}`, amountInUnits],
+      });
+
+      setSendStatus("Sending transaction...");
+
+      const callsId = (await provider.request({
+        method: "wallet_sendCalls",
+        params: [
+          {
+            version: "2.0",
+            atomicRequired: true,
+            chainId: `0x${chain.id.toString(16)}`,
+            from: subAccountAddress,
+            calls: [
+              {
+                to: USDC_BASE_ADDRESS as `0x${string}`,
+                data: data,
+                value: "0x0",
+              },
+            ],
+          },
+        ],
+      })) as string;
+
+      setSendStatus(`✓ Transaction sent! Calls ID: ${callsId}`);
+      setRecipientAddress("");
+      setUsdcAmount("1");
+      setTimeout(() => fetchBalances(), 3000);
+    } catch (error) {
+      console.error("Transaction failed:", error);
+      setSendStatus(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSendLoading(false);
+    }
+  }, [provider, subAccountAddress, recipientAddress, usdcAmount, fetchBalances]);
+
+  const revokePermission = useCallback(async (permissionIndex: number) => {
+    if (!provider || !subAccountAddress || !universalAddress) {
+      setSendStatus("Missing provider or account addresses");
+      return;
+    }
+
+    const permissionWithStatus = permissions[permissionIndex];
+    if (!permissionWithStatus) {
+      setSendStatus("Permission not found");
+      return;
+    }
+
+    setRevokingPermissionId(permissionIndex);
+    setSendStatus("Revoking spend permission...");
+
+    try {
+      const freshPermissions = await fetchPermissions({
+        account: universalAddress,
+        chainId: chain.id,
+        spender: subAccountAddress,
+        provider,
+      });
+
+      const permission = freshPermissions[permissionIndex];
+      if (!permission) {
+        setSendStatus("Permission not found in fresh fetch");
+        return;
+      }
+
+      const revokeCalls = await prepareRevokeCallData(permission);
+      const callsArray = Array.isArray(revokeCalls) ? revokeCalls : [revokeCalls];
+
+      await provider.request({
+        method: "wallet_sendCalls",
+        params: [
+          {
+            version: "2.0",
+            atomicRequired: true,
+            chainId: `0x${chain.id.toString(16)}`,
+            from: subAccountAddress,
+            calls: callsArray.map(call => ({
+              to: call.to,
+              data: call.data,
+              value: call.value || "0x0",
+            })),
+          },
+        ],
+      });
+
+      setSendStatus(`✓ Spend permission revoked successfully!`);
+      setTimeout(async () => {
+        await checkPermissions();
+      }, 3000);
+    } catch (error) {
+      console.error("Revoke failed:", error);
+      setSendStatus(`Error revoking permission: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setRevokingPermissionId(null);
+    }
+  }, [provider, subAccountAddress, universalAddress, permissions, checkPermissions]);
+
+  const requestNewSpendPermission = useCallback(async () => {
+    if (!provider || !universalAddress || !subAccountAddress) {
+      setSendStatus("Missing provider or account addresses");
+      return;
+    }
+
+    if (parseFloat(allowanceAmount) <= 0) {
+      setSendStatus("Allowance amount must be greater than 0");
+      return;
+    }
+
+    setRequestingPermission(true);
+    setSendStatus("Requesting spend permission...");
+
+    try {
+      await requestSpendPermission({
+        account: universalAddress,
+        spender: subAccountAddress,
+        token: USDC_BASE_ADDRESS as `0x${string}`,
+        chainId: chain.id,
+        allowance: parseUnits(allowanceAmount, 6),
+        periodInDays: parseInt(periodInDays),
+        provider,
+      });
+
+      setSendStatus(`✓ Spend permission requested successfully!`);
+      await checkPermissions();
+    } catch (error) {
+      console.error("Request permission failed:", error);
+      setSendStatus(`Error requesting permission: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setRequestingPermission(false);
+    }
+  }, [provider, universalAddress, subAccountAddress, allowanceAmount, periodInDays, checkPermissions]);
+
+  const useSpendPermission = useCallback(async (permissionIndex: number) => {
+    if (!provider || !subAccountAddress || !universalAddress) {
+      setSendStatus("Missing provider or account addresses");
+      return;
+    }
+
+    const permissionWithStatus = permissions[permissionIndex];
+    if (!permissionWithStatus) {
+      setSendStatus("Permission not found");
+      return;
+    }
+
+    if (!permissionWithStatus.status?.isActive) {
+      setSendStatus("Permission is not active");
+      return;
+    }
+
+    const spendAmountInUnits = parseUnits(spendAmount, 6);
+    if (permissionWithStatus.status.remainingSpend < spendAmountInUnits) {
+      setSendStatus("Insufficient remaining spend allowance");
+      return;
+    }
+
+    setSpendingFromPermission(permissionIndex);
+    setSendStatus("Using spend permission to transfer USDC to sub account...");
+
+    try {
+      const freshPermissions = await fetchPermissions({
+        account: universalAddress,
+        chainId: chain.id,
+        spender: subAccountAddress,
+        provider,
+      });
+
+      const permission = freshPermissions[permissionIndex];
+      if (!permission) {
+        setSendStatus("Permission not found in fresh fetch");
+        return;
+      }
+
+      const spendCalls = await prepareSpendCallData(permission, spendAmountInUnits);
+      const callsArray = Array.isArray(spendCalls) ? spendCalls : [spendCalls];
+
+      await provider.request({
+        method: "wallet_sendCalls",
+        params: [
+          {
+            version: "2.0",
+            atomicRequired: true,
+            chainId: `0x${chain.id.toString(16)}`,
+            from: subAccountAddress,
+            calls: callsArray.map(call => ({
+              to: call.to,
+              data: call.data,
+              value: call.value || "0x0",
+            })),
+          },
+        ],
+      });
+
+      setSendStatus(`✓ Spent ${spendAmount} USDC using permission! Transaction sent.`);
+      setTimeout(async () => {
+        await checkPermissions();
+        await fetchBalances();
+      }, 3000);
+    } catch (error) {
+      console.error("Spend failed:", error);
+      setSendStatus(`Error spending with permission: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setSpendingFromPermission(null);
+    }
+  }, [provider, subAccountAddress, universalAddress, permissions, spendAmount, checkPermissions, fetchBalances]);
 
   const truncateAddress = (address: string) => {
     if (!address) return "";
@@ -263,7 +578,7 @@ export default function AccountPage() {
               {connectLoading ? "Connecting..." : "Connect Wallet"}
             </button>
             <Link href="/">
-              <button className="connect-button" style={{ background: "#666" }}>
+              <button className="connect-button">
                 Back to Home
               </button>
             </Link>
@@ -297,8 +612,52 @@ export default function AccountPage() {
           </Link>
         </div>
         {universalAddress && (
-          <div style={{ marginTop: "16px", fontSize: "0.9rem", opacity: 0.9 }}>
-            <p>{userInfo && `${userInfo.displayName} • `}Universal Account: {universalAddress}</p>
+          <div style={{ 
+            marginTop: "24px", 
+            fontSize: "0.9rem",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+            gap: "16px",
+          }}>
+            <div style={{
+              padding: "20px",
+              background: "rgba(255, 255, 255, 0.05)",
+              borderRadius: "12px",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+            }}>
+              <div style={{ fontSize: "0.85rem", opacity: 0.7, fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Base Account
+              </div>
+              <div style={{ fontFamily: "monospace", fontSize: "0.85rem", opacity: 0.9 }}>
+                {universalAddress}
+              </div>
+              <div style={{ fontSize: "1.5rem", fontWeight: "700", color: "#4ade80", marginTop: "4px" }}>
+                {balanceLoading ? "..." : `${universalBalance || "0"}`} <span style={{ fontSize: "1rem", opacity: 0.8 }}>USDC</span>
+              </div>
+            </div>
+
+            <div style={{
+              padding: "20px",
+              background: "rgba(255, 255, 255, 0.05)",
+              borderRadius: "12px",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+            }}>
+              <div style={{ fontSize: "0.85rem", opacity: 0.7, fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Sub Account
+              </div>
+              <div style={{ fontFamily: "monospace", fontSize: "0.85rem", opacity: 0.9 }}>
+                {subAccountAddress}
+              </div>
+              <div style={{ fontSize: "1.5rem", fontWeight: "700", color: "#4ade80", marginTop: "4px" }}>
+                {balanceLoading ? "..." : `${subBalance || "0"}`} <span style={{ fontSize: "1rem", opacity: 0.8 }}>USDC</span>
+              </div>
+            </div>
           </div>
         )}
       </header>
@@ -353,10 +712,12 @@ export default function AccountPage() {
             return (
             <div key={article.slug} className="article-card">
               {article.imageUrl && (
-                <div
-                  className="article-image"
-                  style={{ backgroundImage: `url(${article.imageUrl})` }}
-                />
+                <div className="article-image">
+                  <img 
+                    src={article.imageUrl} 
+                    alt={article.title}
+                  />
+                </div>
               )}
               <div className="article-content">
                 <h2 className="article-title">{article.title}</h2>
@@ -415,6 +776,263 @@ export default function AccountPage() {
           })
         )}
       </main>
+
+      {/* Admin Features */}
+      {myArticles.length > 0 && (
+        <>
+          {/* Request New Spend Permission */}
+          <div style={{
+            marginTop: "48px",
+            marginBottom: "32px",
+            background: "rgba(255, 255, 255, 0.1)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "16px",
+            padding: "32px",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+          }}>
+            <h2 style={{ fontSize: "1.5rem", marginBottom: "16px" }}>Request New Spend Permission</h2>
+            <p style={{ fontSize: "0.9rem", opacity: 0.8, marginBottom: "24px" }}>
+              Allow Sub Account to spend USDC from Base Account
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
+                  Allowance Amount (USDC per period):
+                </label>
+                <input
+                  type="number"
+                  value={allowanceAmount}
+                  onChange={(e) => setAllowanceAmount(e.target.value)}
+                  placeholder="10"
+                  step="0.01"
+                  min="0"
+                  disabled={requestingPermission}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(255, 255, 255, 0.3)",
+                    background: "rgba(0, 0, 0, 0.2)",
+                    color: "white",
+                    fontSize: "1rem",
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
+                  Period (days):
+                </label>
+                <input
+                  type="number"
+                  value={periodInDays}
+                  onChange={(e) => setPeriodInDays(e.target.value)}
+                  placeholder="30"
+                  min="1"
+                  disabled={requestingPermission}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(255, 255, 255, 0.3)",
+                    background: "rgba(0, 0, 0, 0.2)",
+                    color: "white",
+                    fontSize: "1rem",
+                  }}
+                />
+              </div>
+              <button
+                onClick={requestNewSpendPermission}
+                disabled={requestingPermission || parseFloat(allowanceAmount) <= 0}
+                className="connect-button"
+                style={{ width: "fit-content" }}
+              >
+                {requestingPermission ? "Requesting..." : "Request Spend Permission"}
+              </button>
+            </div>
+          </div>
+
+          {/* Spend Permissions */}
+          <div style={{
+            marginBottom: "32px",
+            background: "rgba(255, 255, 255, 0.1)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "16px",
+            padding: "32px",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Spend Permissions</h2>
+              <button 
+                onClick={checkPermissions} 
+                disabled={checkingPermissions}
+                className="connect-button"
+              >
+                {checkingPermissions ? "Checking..." : "Refresh"}
+              </button>
+            </div>
+
+            {permissions.length === 0 ? (
+              <p style={{ fontSize: "0.9rem", opacity: 0.7 }}>No spend permissions found</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                {permissions.map((perm, idx) => (
+                  <div 
+                    key={idx} 
+                    style={{
+                      padding: "24px",
+                      background: "rgba(0, 0, 0, 0.2)",
+                      borderRadius: "12px",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      <div>
+                        <strong>Token:</strong>{" "}
+                        <code style={{ fontSize: "0.85rem" }}>{perm.permission?.token}</code>
+                      </div>
+                      <div>
+                        <strong>Allowance:</strong>{" "}
+                        {perm.permission?.allowance ? formatUnits(BigInt(perm.permission.allowance), 6) : "0"} USDC
+                      </div>
+                      {perm.status && (
+                        <>
+                          <div>
+                            <strong>Status:</strong>{" "}
+                            <span style={{ color: perm.status.isActive ? "#4ade80" : "#f87171" }}>
+                              {perm.status.isActive ? "✓ Active" : "✗ Inactive"}
+                            </span>
+                          </div>
+                          <div>
+                            <strong>Remaining Spend:</strong>{" "}
+                            {perm.status.remainingSpend ? formatUnits(perm.status.remainingSpend, 6) : "0"} USDC
+                          </div>
+                          {perm.status.isActive && (
+                            <div style={{ marginTop: "16px" }}>
+                              <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
+                                Amount to Spend (USDC):
+                              </label>
+                              <input
+                                type="number"
+                                value={spendAmount}
+                                onChange={(e) => setSpendAmount(e.target.value)}
+                                placeholder="1"
+                                step="0.01"
+                                min="0"
+                                disabled={spendingFromPermission === idx}
+                                style={{
+                                  width: "100%",
+                                  padding: "12px",
+                                  borderRadius: "8px",
+                                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                                  background: "rgba(0, 0, 0, 0.2)",
+                                  color: "white",
+                                  fontSize: "1rem",
+                                  marginBottom: "12px",
+                                }}
+                              />
+                              <button
+                                onClick={() => useSpendPermission(idx)}
+                                disabled={spendingFromPermission === idx || parseFloat(spendAmount) <= 0}
+                                className="connect-button"
+                                style={{ width: "fit-content", marginRight: "12px" }}
+                              >
+                                {spendingFromPermission === idx ? "Spending..." : "Use Permission to Spend"}
+                              </button>
+                            </div>
+                          )}
+                          <button
+                            onClick={() => revokePermission(idx)}
+                            disabled={revokingPermissionId === idx}
+                            className="connect-button"
+                            style={{ width: "fit-content", marginTop: "12px" }}
+                          >
+                            {revokingPermissionId === idx ? "Revoking..." : "Revoke Permission"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Send USDC */}
+          <div style={{
+            marginBottom: "32px",
+            background: "rgba(255, 255, 255, 0.1)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "16px",
+            padding: "32px",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+          }}>
+            <h2 style={{ fontSize: "1.5rem", marginBottom: "16px" }}>Send USDC from Sub Account</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
+                  Recipient Address:
+                </label>
+                <input
+                  type="text"
+                  value={recipientAddress}
+                  onChange={(e) => setRecipientAddress(e.target.value)}
+                  placeholder="0x..."
+                  disabled={sendLoading}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(255, 255, 255, 0.3)",
+                    background: "rgba(0, 0, 0, 0.2)",
+                    color: "white",
+                    fontSize: "1rem",
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
+                  Amount (USDC):
+                </label>
+                <input
+                  type="number"
+                  value={usdcAmount}
+                  onChange={(e) => setUsdcAmount(e.target.value)}
+                  placeholder="1"
+                  step="0.01"
+                  min="0"
+                  disabled={sendLoading}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(255, 255, 255, 0.3)",
+                    background: "rgba(0, 0, 0, 0.2)",
+                    color: "white",
+                    fontSize: "1rem",
+                  }}
+                />
+              </div>
+              <button
+                onClick={sendUSDC}
+                disabled={sendLoading || !recipientAddress || parseFloat(usdcAmount) <= 0}
+                className="connect-button"
+                style={{ width: "fit-content" }}
+              >
+                {sendLoading ? "Sending..." : `Send ${usdcAmount} USDC`}
+              </button>
+              {sendStatus && (
+                <p style={{ 
+                  fontSize: "0.9rem", 
+                  color: sendStatus.includes("✓") ? "#4ade80" : sendStatus.includes("Error") ? "#f87171" : "white",
+                  marginTop: "8px"
+                }}>
+                  {sendStatus}
+                </p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       <footer className="footer">
         <p>Powered by Base Account Sub Accounts + x402 Protocol</p>
