@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { notFound } from "next/navigation";
 import { useParams } from "next/navigation";
 import { Article } from "@/lib/articles";
-import { ArticleStats, RatingRecord } from "@/lib/redis";
+import { ArticleStats } from "@/lib/redis";
 import { useBaseAccount } from "@/app/providers";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
@@ -192,11 +192,11 @@ export default function ArticlePage() {
               size={48} 
             />
             <div>
-              <p style={{ fontSize: "0.9rem", color: "#666", margin: 0 }}>
+              <p style={{ fontSize: "0.9rem", color: "#ccc", margin: 0 }}>
                 By {article.authorDisplayName} • {article.priceUsd} •{" "}
                 {formatDate(article.uploadedAt)}
               </p>
-              <p style={{ fontSize: "0.85rem", color: "#888", marginTop: "0.25rem", margin: 0 }}>
+              <p style={{ fontSize: "0.85rem", color: "#aaa", marginTop: "0.25rem", margin: 0 }}>
                 {article.authorAddress}
               </p>
             </div>
