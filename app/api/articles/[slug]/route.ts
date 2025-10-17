@@ -14,6 +14,7 @@ export async function GET(
     return new Response("Article not found", { status: 404 });
   }
 
-  return Response.json({ body: article.body });
+  // Return the full article object including all metadata
+  return Response.json(article);
 }
 

@@ -138,12 +138,52 @@ export async function middleware(request: NextRequest) {
             outputSchema: {
               type: "object",
               properties: {
+                slug: {
+                  type: "string",
+                  description: "URL-friendly identifier for the article",
+                },
+                title: {
+                  type: "string",
+                  description: "The article title",
+                },
+                teaser: {
+                  type: "string",
+                  description: "A short preview of the article",
+                },
                 body: {
                   type: "string",
                   description: "The full article content in markdown format",
                 },
+                imageUrl: {
+                  type: "string",
+                  description: "URL to the article cover image",
+                },
+                priceUsd: {
+                  type: "string",
+                  description: "The price paid to access this article",
+                },
+                authorAddress: {
+                  type: "string",
+                  description: "Ethereum/Base address of the author",
+                },
+                authorUsername: {
+                  type: "string",
+                  description: "Author's username",
+                },
+                authorDisplayName: {
+                  type: "string",
+                  description: "Author's display name",
+                },
+                authorPfpUrl: {
+                  type: "string",
+                  description: "Author's profile picture URL",
+                },
+                uploadedAt: {
+                  type: "string",
+                  description: "ISO 8601 timestamp when the article was uploaded",
+                },
               },
-              required: ["body"],
+              required: ["slug", "title", "body", "priceUsd", "authorAddress", "uploadedAt"],
             },
           },
         },
