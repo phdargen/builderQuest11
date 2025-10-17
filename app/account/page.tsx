@@ -217,6 +217,9 @@ export default function AccountPage() {
                 value: "0x0",
               },
             ],
+            capabilities: {
+              paymasterService: { url: process.env.NEXT_PUBLIC_PAYMASTER_URL as string },
+            },
           },
         ],
       }) as string;
@@ -332,6 +335,9 @@ export default function AccountPage() {
                 value: "0x0",
               },
             ],
+            capabilities: {
+              paymasterService: { url: process.env.NEXT_PUBLIC_PAYMASTER_URL as string },
+            },
           },
         ],
       })) as string;
@@ -393,6 +399,9 @@ export default function AccountPage() {
               data: call.data,
               value: call.value || "0x0",
             })),
+            capabilities: {
+              paymasterService: { url: process.env.NEXT_PUBLIC_PAYMASTER_URL as string },
+            },
           },
         ],
       });
@@ -500,6 +509,9 @@ export default function AccountPage() {
               data: call.data,
               value: call.value || "0x0",
             })),
+            capabilities: {
+              paymasterService: { url: process.env.NEXT_PUBLIC_PAYMASTER_URL as string },
+            },
           },
         ],
       });
@@ -516,11 +528,6 @@ export default function AccountPage() {
       setSpendingFromPermission(null);
     }
   }, [provider, subAccountAddress, universalAddress, permissions, spendAmount, checkPermissions, fetchBalances]);
-
-  const truncateAddress = (address: string) => {
-    if (!address) return "";
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
 
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
@@ -567,15 +574,14 @@ export default function AccountPage() {
     return (
       <div className="container">
         <header className="header">
-          <h1 className="site-title">My Account</h1>
-          <p className="site-subtitle">View your published articles and earnings</p>
+          <h1 className="site-title">My BasePosts</h1>
           <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
             <button
               onClick={connect}
               disabled={connectLoading}
               className="connect-button"
             >
-              {connectLoading ? "Connecting..." : "Connect Wallet"}
+              {connectLoading ? "Connecting..." : "Login"}
             </button>
             <Link href="/">
               <button className="connect-button">
@@ -591,8 +597,7 @@ export default function AccountPage() {
   return (
     <div className="container">
       <header className="header">
-        <h1 className="site-title">My Account</h1>
-        <p className="site-subtitle">Your published articles and earnings</p>
+        <h1 className="site-title">My BasePosts</h1>
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
           <div className="connected-badge" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             {userInfo && (
@@ -607,7 +612,7 @@ export default function AccountPage() {
           </Link>
           <Link href="/upload">
             <button className="connect-button">
-              List Content
+              Publish
             </button>
           </Link>
         </div>
@@ -722,7 +727,7 @@ export default function AccountPage() {
               <div className="article-content">
                 <h2 className="article-title">{article.title}</h2>
                 <p className="article-teaser">{article.teaser}</p>
-                <p style={{ fontSize: "0.85rem", color: "#666", marginTop: "0.5rem" }}>
+                <p style={{ fontSize: "0.85rem", color: "#ccc", marginTop: "0.5rem" }}>
                   Published {formatDate(article.uploadedAt)}
                 </p>
                 <div style={{ 
@@ -744,6 +749,38 @@ export default function AccountPage() {
                       </span>
                     )}
                   </div>
+                  {stats.recentPurchases && stats.recentPurchases.length > 0 && (
+                    <div style={{ marginTop: "8px" }}>
+                      <div style={{ fontSize: "0.8rem", marginBottom: "6px", opacity: 0.8 }}>
+                        Recent purchasers:
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                        {stats.recentPurchases.slice(0, 10).map((purchase) => (
+                          <div
+                            key={purchase.universalAddress}
+                            title={purchase.displayName}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              background: "rgba(255, 255, 255, 0.05)",
+                              padding: "4px 8px",
+                              borderRadius: "8px",
+                              border: "1px solid rgba(255, 255, 255, 0.1)",
+                              fontSize: "0.75rem",
+                            }}
+                          >
+                            <Avatar 
+                              pfpUrl={purchase.pfpUrl} 
+                              displayName={purchase.displayName} 
+                              size={20} 
+                            />
+                            <span>{purchase.displayName}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div style={{ 
                     display: "flex", 
                     alignItems: "center", 
@@ -1035,8 +1072,7 @@ export default function AccountPage() {
       )}
 
       <footer className="footer">
-        <p>Powered by Base Account Sub Accounts + x402 Protocol</p>
-        <p className="footer-note">All articles protected by micropayments on Base Sepolia</p>
+        <p>BasePost - Powered by Base Sub Accounts + x402</p>
       </footer>
     </div>
   );

@@ -58,8 +58,8 @@ DEBUG_MODE=true
 # NEXT_PUBLIC_FACILITATOR_URL=
 
 # Upstash Redis Configuration (for reputation system)
-UPSTASH_REDIS_URL=your-upstash-redis-url
-UPSTASH_REDIS_TOKEN=your-upstash-redis-token
+UPSTASH_REDIS_REST_URL=your-upstash-redis-url
+UPSTASH_REDIS_REST_TOKEN=your-upstash-redis-token
 
 # Neynar API Configuration (for Farcaster display names)
 # Get your API key at https://neynar.com

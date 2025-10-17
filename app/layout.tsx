@@ -5,6 +5,9 @@ import { Providers } from "./providers";
 export const metadata: Metadata = {
   title: "BasePost",
   description: "A place to read, write and earn on Base",
+  icons: {
+    icon: '/basePost.png',
+  },
 };
 
 export default function RootLayout({

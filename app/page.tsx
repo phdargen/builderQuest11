@@ -124,6 +124,9 @@ export default function Home() {
                 value: "0x0",
               },
             ],
+            capabilities: {
+              paymasterService: { url: process.env.NEXT_PUBLIC_PAYMASTER_URL as string },
+            },
           },
         ],
       }) as string;
@@ -236,8 +239,8 @@ export default function Home() {
   return (
     <div className="container">
       <header className="header">
-        <h1 className="site-title">Based News</h1>
-        <p className="site-subtitle">Premium Blockchain & Tech Journalism</p>
+        <h1 className="site-title">BasePost</h1>
+        <p className="site-subtitle">A place to read, write and earn on Base</p>
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
           {!connected ? (
             <button
@@ -245,7 +248,7 @@ export default function Home() {
               disabled={connectLoading}
               className="connect-button"
             >
-              {connectLoading ? "Connecting..." : "Connect Wallet"}
+              {connectLoading ? "Connecting..." : "Login"}
             </button>
           ) : (
             <div className="connected-badge" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -257,12 +260,12 @@ export default function Home() {
           )}
           <Link href="/account">
             <button className="connect-button">
-              My Account
+              My BasePosts
             </button>
           </Link>
           <Link href="/upload">
             <button className="connect-button">
-              List Content
+              Publish
             </button>
           </Link>
         </div>
@@ -313,14 +316,12 @@ export default function Home() {
             
             return (
             <div key={article.slug} className="article-card">
-              {article.imageUrl && (
-                <div className="article-image">
-                  <img 
-                    src={article.imageUrl} 
-                    alt={article.title}
-                  />
-                </div>
-              )}
+              <div className="article-image">
+                <img 
+                  src={article.imageUrl || '/basePost.png'} 
+                  alt={article.title}
+                />
+              </div>
               <div className="article-content">
                 <h2 className="article-title">{article.title}</h2>
                 <p className="article-teaser">{article.teaser}</p>
@@ -404,8 +405,7 @@ export default function Home() {
       </main>
 
       <footer className="footer">
-        <p>Powered by Base Account Sub Accounts + x402 Protocol</p>
-        <p className="footer-note">All articles protected by micropayments on Base Sepolia</p>
+        <p>BasePost - Powered by Base Sub Accounts + x402</p>
       </footer>
     </div>
   );

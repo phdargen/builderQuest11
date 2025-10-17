@@ -29,7 +29,64 @@ export async function middleware(request: NextRequest) {
           price: "$0.10",
           network: network,
           config: {
-            description: "Upload an article to Base Post",
+            discoverable: true,
+            description: "Upload an article to BasePost - A decentralized news platform where authors can publish and monetize content using x402 payments",
+            inputSchema: {
+              bodyType: "form-data",
+              bodyFields: {
+                title: {
+                  type: "string",
+                  description: "The title of the article",
+                  required: true,
+                },
+                teaser: {
+                  type: "string",
+                  description: "A short teaser/preview of the article (shown before purchase)",
+                  required: true,
+                },
+                body: {
+                  type: "string",
+                  description: "The full article content in markdown format",
+                  required: true,
+                },
+                priceUsd: {
+                  type: "string",
+                  description: "The price to access this article (format: $0.10)",
+                  required: true,
+                },
+                authorAddress: {
+                  type: "string",
+                  description: "The Ethereum/Base address of the article author (receives payments)",
+                  required: true,
+                },
+                image: {
+                  type: "file",
+                  description: "Optional cover image for the article",
+                },
+                imageUrl: {
+                  type: "string",
+                  description: "Optional URL to an existing cover image (used if image file not provided)",
+                },
+              },
+            },
+            outputSchema: {
+              type: "object",
+              properties: {
+                success: {
+                  type: "boolean",
+                  description: "Whether the upload was successful",
+                },
+                slug: {
+                  type: "string",
+                  description: "The generated URL slug for the article (derived from title)",
+                },
+                message: {
+                  type: "string",
+                  description: "Success message confirming upload",
+                },
+              },
+              required: ["success", "slug", "message"],
+            },
           },
         },
       },
@@ -40,8 +97,25 @@ export async function middleware(request: NextRequest) {
   
   // Handle article routes with author's address
   if (pathname.startsWith('/api/articles/')) {
-    // Extract slug from pathname (e.g., /api/articles/my-article or /api/articles/my-article/purchase)
-    const pathParts = pathname.split('/api/articles/')[1].split('/');
+    // Extract path parts to check for sub-routes
+    const pathAfterArticles = pathname.split('/api/articles/')[1];
+    const pathParts = pathAfterArticles.split('/');
+    
+    // Skip payment middleware for non-article routes:
+    // - /api/articles (list all articles)
+    // - /api/articles/stats (global stats)
+    // - /api/articles/[slug]/purchase (purchase recording)
+    // - /api/articles/[slug]/rating (rating endpoints)
+    // - /api/articles/[slug]/stats (individual article stats)
+    if (
+      !pathAfterArticles || // /api/articles
+      pathParts.length === 1 && pathParts[0] === 'stats' || // /api/articles/stats
+      pathParts.length > 1 && (pathParts[1] === 'purchase' || pathParts[1] === 'rating' || pathParts[1] === 'stats')
+    ) {
+      return NextResponse.next();
+    }
+    
+    // Only apply payment middleware to /api/articles/[slug] (exact match)
     const slug = pathParts[0];
     
     // Load the specific article
@@ -59,7 +133,18 @@ export async function middleware(request: NextRequest) {
           price: article.priceUsd,
           network: network,
           config: {
-            description: article.teaser,
+            discoverable: true,
+            description: `BasePost by ${article.authorDisplayName || article.authorUsername}: ${article.teaser}`,
+            outputSchema: {
+              type: "object",
+              properties: {
+                body: {
+                  type: "string",
+                  description: "The full article content in markdown format",
+                },
+              },
+              required: ["body"],
+            },
           },
         },
       },

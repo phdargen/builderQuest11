@@ -164,6 +164,9 @@ export default function UploadPage() {
                 value: "0x0",
               },
             ],
+            capabilities: {
+              paymasterService: { url: process.env.NEXT_PUBLIC_PAYMASTER_URL as string },
+            },
           },
         ],
       }) as string;
