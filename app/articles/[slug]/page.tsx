@@ -36,7 +36,7 @@ export default async function ArticlePage({
           </p>
         </div>
         
-        <ArticlePanel slug={slug} />
+        <ArticlePanel slug={slug} priceUsd={article.priceUsd} />
       </div>
     </main>
   );
