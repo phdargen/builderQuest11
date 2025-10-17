@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Sub Accounts Example",
-  description: "Demo app showing Base Account Sub Accounts integration",
+  title: "Based News - Premium Blockchain Journalism",
+  description: "Premium blockchain and tech journalism protected by micropayments using Base Account Sub Accounts and x402 protocol",
 };
 
 export default function RootLayout({
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

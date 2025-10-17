@@ -1,13 +1,15 @@
-# Sub Accounts Example
+# Based News
 
-A simple Next.js app demonstrating Base Account SDK Sub Accounts integration with automatic sub account creation and USDC transfers on Base Sepolia.
+A modern news platform demonstrating Base Account Sub Accounts integration with x402 payment protocol for micropayment-protected articles.
 
 ## Features
 
+- **Micropayment Paywalls**: Articles protected by x402 protocol payments
 - **Automatic Sub Account Creation**: Sub account is created automatically when users connect their wallet
-- **USDC Transfer**: Send USDC to a specified address on Base Sepolia
+- **No Repeated Approvals**: Payments are processed from the sub account without repeated wallet prompts
 - **Auto Spend Permissions**: Sub accounts can access Universal Account balance when needed
-- **Modern UI**: Clean and responsive interface
+- **Modern UI**: Clean, responsive NYT-inspired grid layout with blue gradient styling
+- **Individual Article Pricing**: Each article can have custom pricing
 
 ## Getting Started
 
@@ -15,7 +17,7 @@ A simple Next.js app demonstrating Base Account SDK Sub Accounts integration wit
 
 - Node.js 18+ installed
 - A Base Account (create one at [account.base.app](https://account.base.app))
-- USDC on Base Sepolia testnet
+- USDC on Base Sepolia testnet for reading articles
 
 ### Installation
 
@@ -25,15 +27,25 @@ A simple Next.js app demonstrating Base Account SDK Sub Accounts integration wit
 npm install
 ```
 
-2. Run the development server:
+2. Create a `.env` file with your seller address:
+
+```bash
+SELLER_ADDRESS=0xYourAddressHere
+```
+
+This is the address that will receive payments when users unlock articles.
+
+3. Run the development server:
 
 ```bash
 npm run dev
 ```
 
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## How It Works
+
+### Base Account Sub Accounts
 
 This app uses the **quickstart configuration** from the Base Account SDK:
 
@@ -46,40 +58,91 @@ const sdk = createBaseAccountSDK({
 });
 ```
 
+When users connect their wallet:
+1. A sub account is automatically created for your app
+2. All subsequent transactions are sent from the sub account
+3. No repeated approval prompts are needed
+4. The sub account can access the Universal Account's USDC balance via Spend Permissions
+
+### x402 Payment Protocol
+
+Articles are protected by the x402 protocol:
+- Middleware intercepts requests to article API routes
+- Payment validation happens automatically
+- Each article can have individual pricing
+- Payments are processed in USDC on Base Sepolia
+
 ### Key Benefits
 
-- **No repeated prompts**: Transactions are sent from the sub account without repeated approval
-- **Seamless funding**: Auto Spend Permissions allow the sub account to access Universal Account balance
-- **Better UX**: Perfect for apps requiring frequent transactions
+- **Frictionless UX**: Users only approve the connection once, then can unlock articles without repeated prompts
+- **Seamless funding**: No need to manually fund the sub account - it accesses the Universal Account balance
+- **Micropayments**: Perfect for low-cost content like news articles ($0.002 - $0.005 per article)
+- **Developer friendly**: Simple integration with middleware and protected API routes
 
 ## Usage
 
-1. **Connect Wallet**: Click "Connect Wallet" and approve the connection in your Base Account
-2. **Sub Account Created**: A sub account is automatically created for this app
-3. **Send USDC**: Enter an amount and click "Send USDC" to transfer to the recipient address
+1. **Connect Wallet**: Click "Connect Wallet" on the homepage
+2. **Browse Articles**: View article cards with images, titles, teasers, and pricing
+3. **Unlock Article**: Click on an article to view details, then click "Unlock Article"
+4. **Payment**: The payment is processed automatically from your sub account
+5. **Read**: Full article content is displayed after successful payment
 
 ## Configuration
 
-### Recipient Address
+### Article Content
 
-The USDC recipient address is set in `app/page.tsx`:
-
-```tsx
-const RECIPIENT_ADDRESS = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045";
-```
-
-### USDC Contract
-
-The app uses the USDC contract on Base Sepolia:
+Articles are defined in `lib/articles.ts`:
 
 ```tsx
-const USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+export const ARTICLES = [
+  {
+    slug: "article-slug",
+    title: "Article Title",
+    teaser: "Brief description...",
+    body: "Full article content...",
+    imageUrl: "https://...",
+    priceUsd: "$0.003",
+  },
+  // ... more articles
+];
 ```
+
+### Payment Routes
+
+The middleware in `middleware.ts` automatically creates protected routes for each article:
+
+```tsx
+ARTICLES.forEach((article) => {
+  articleRoutes[`/api/articles/${article.slug}`] = {
+    price: article.priceUsd,
+    network: "base-sepolia",
+    config: {
+      description: article.teaser,
+    },
+  };
+});
+```
+
+### Getting Test USDC
+
+To get USDC on Base Sepolia for testing:
+1. Get Base Sepolia ETH from a faucet
+2. Swap for USDC on a Base Sepolia DEX, or
+3. Use the USDC faucet if available
+
+## Architecture
+
+- **Frontend**: Next.js 14 with React 18
+- **Wallet Integration**: Base Account SDK with Sub Accounts
+- **Payment**: x402 protocol with middleware protection
+- **Network**: Base Sepolia (testnet)
+- **Token**: USDC (6 decimals)
 
 ## Learn More
 
 - [Base Account Documentation](https://docs.base.org/base-account)
 - [Sub Accounts Guide](https://docs.base.org/base-account/improve-ux/sub-accounts)
+- [x402 Protocol](https://github.com/coinbase/x402)
 - [Base Account SDK](https://github.com/base/account-sdk)
 
 ## License
