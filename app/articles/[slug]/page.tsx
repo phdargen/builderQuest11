@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { getArticle } from "@/lib/articles";
-import { ArticlePanel } from "./ArticlePanel";
 import Link from "next/link";
 
 export default async function ArticlePage({ 
@@ -31,12 +30,13 @@ export default async function ArticlePage({
         
         <div className="article-header">
           <h1 className="article-page-title">{article.title}</h1>
-          <p className="article-unlock-info">
-            Unlock full article: {article.priceUsd} USDC on Base Sepolia
-          </p>
         </div>
         
-        <ArticlePanel slug={slug} priceUsd={article.priceUsd} />
+        <article className="article-body">
+          {article.body.split('\n\n').map((paragraph, idx) => (
+            <p key={idx}>{paragraph}</p>
+          ))}
+        </article>
       </div>
     </main>
   );

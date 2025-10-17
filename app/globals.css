@@ -158,6 +158,14 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+.article-footer-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 .article-price {
   font-size: 0.875rem;
   font-weight: 600;
@@ -170,6 +178,29 @@ body {
   font-size: 0.875rem;
   font-weight: 600;
   opacity: 0.8;
+}
+
+.unlock-button-small {
+  background: white;
+  color: #0052ff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.unlock-button-small:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.unlock-button-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Footer */
