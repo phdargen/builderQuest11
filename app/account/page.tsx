@@ -815,261 +815,257 @@ export default function AccountPage() {
       </main>
 
       {/* Admin Features */}
-      {myArticles.length > 0 && (
-        <>
-          {/* Request New Spend Permission */}
-          <div style={{
-            marginTop: "48px",
-            marginBottom: "32px",
-            background: "rgba(255, 255, 255, 0.1)",
-            backdropFilter: "blur(10px)",
-            borderRadius: "16px",
-            padding: "32px",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-          }}>
-            <h2 style={{ fontSize: "1.5rem", marginBottom: "16px" }}>Request New Spend Permission</h2>
-            <p style={{ fontSize: "0.9rem", opacity: 0.8, marginBottom: "24px" }}>
-              Allow Sub Account to spend USDC from Base Account
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div>
-                <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
-                  Allowance Amount (USDC per period):
-                </label>
-                <input
-                  type="number"
-                  value={allowanceAmount}
-                  onChange={(e) => setAllowanceAmount(e.target.value)}
-                  placeholder="10"
-                  step="0.01"
-                  min="0"
-                  disabled={requestingPermission}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(255, 255, 255, 0.3)",
-                    background: "rgba(0, 0, 0, 0.2)",
-                    color: "white",
-                    fontSize: "1rem",
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
-                  Period (days):
-                </label>
-                <input
-                  type="number"
-                  value={periodInDays}
-                  onChange={(e) => setPeriodInDays(e.target.value)}
-                  placeholder="30"
-                  min="1"
-                  disabled={requestingPermission}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(255, 255, 255, 0.3)",
-                    background: "rgba(0, 0, 0, 0.2)",
-                    color: "white",
-                    fontSize: "1rem",
-                  }}
-                />
-              </div>
-              <button
-                onClick={requestNewSpendPermission}
-                disabled={requestingPermission || parseFloat(allowanceAmount) <= 0}
-                className="connect-button"
-                style={{ width: "fit-content" }}
-              >
-                {requestingPermission ? "Requesting..." : "Request Spend Permission"}
-              </button>
-            </div>
+      {/* Request New Spend Permission */}
+      <div style={{
+        marginTop: "48px",
+        marginBottom: "32px",
+        background: "rgba(255, 255, 255, 0.1)",
+        backdropFilter: "blur(10px)",
+        borderRadius: "16px",
+        padding: "32px",
+        border: "1px solid rgba(255, 255, 255, 0.2)",
+      }}>
+        <h2 style={{ fontSize: "1.5rem", marginBottom: "16px" }}>Request New Spend Permission</h2>
+        <p style={{ fontSize: "0.9rem", opacity: 0.8, marginBottom: "24px" }}>
+          Allow Sub Account to spend USDC from Base Account
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
+              Allowance Amount (USDC per period):
+            </label>
+            <input
+              type="number"
+              value={allowanceAmount}
+              onChange={(e) => setAllowanceAmount(e.target.value)}
+              placeholder="10"
+              step="0.01"
+              min="0"
+              disabled={requestingPermission}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "8px",
+                border: "1px solid rgba(255, 255, 255, 0.3)",
+                background: "rgba(0, 0, 0, 0.2)",
+                color: "white",
+                fontSize: "1rem",
+              }}
+            />
           </div>
+          <div>
+            <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
+              Period (days):
+            </label>
+            <input
+              type="number"
+              value={periodInDays}
+              onChange={(e) => setPeriodInDays(e.target.value)}
+              placeholder="30"
+              min="1"
+              disabled={requestingPermission}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "8px",
+                border: "1px solid rgba(255, 255, 255, 0.3)",
+                background: "rgba(0, 0, 0, 0.2)",
+                color: "white",
+                fontSize: "1rem",
+              }}
+            />
+          </div>
+          <button
+            onClick={requestNewSpendPermission}
+            disabled={requestingPermission || parseFloat(allowanceAmount) <= 0}
+            className="connect-button"
+            style={{ width: "fit-content" }}
+          >
+            {requestingPermission ? "Requesting..." : "Request Spend Permission"}
+          </button>
+        </div>
+      </div>
 
-          {/* Spend Permissions */}
-          <div style={{
-            marginBottom: "32px",
-            background: "rgba(255, 255, 255, 0.1)",
-            backdropFilter: "blur(10px)",
-            borderRadius: "16px",
-            padding: "32px",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Spend Permissions</h2>
-              <button 
-                onClick={checkPermissions} 
-                disabled={checkingPermissions}
-                className="connect-button"
+      {/* Spend Permissions */}
+      <div style={{
+        marginBottom: "32px",
+        background: "rgba(255, 255, 255, 0.1)",
+        backdropFilter: "blur(10px)",
+        borderRadius: "16px",
+        padding: "32px",
+        border: "1px solid rgba(255, 255, 255, 0.2)",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h2 style={{ fontSize: "1.5rem", margin: 0 }}>Spend Permissions</h2>
+          <button 
+            onClick={checkPermissions} 
+            disabled={checkingPermissions}
+            className="connect-button"
+          >
+            {checkingPermissions ? "Checking..." : "Refresh"}
+          </button>
+        </div>
+
+        {permissions.length === 0 ? (
+          <p style={{ fontSize: "0.9rem", opacity: 0.7 }}>No spend permissions found</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+            {permissions.map((perm, idx) => (
+              <div 
+                key={idx} 
+                style={{
+                  padding: "24px",
+                  background: "rgba(0, 0, 0, 0.2)",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                }}
               >
-                {checkingPermissions ? "Checking..." : "Refresh"}
-              </button>
-            </div>
-
-            {permissions.length === 0 ? (
-              <p style={{ fontSize: "0.9rem", opacity: 0.7 }}>No spend permissions found</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-                {permissions.map((perm, idx) => (
-                  <div 
-                    key={idx} 
-                    style={{
-                      padding: "24px",
-                      background: "rgba(0, 0, 0, 0.2)",
-                      borderRadius: "12px",
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
-                    }}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                      <div>
-                        <strong>Token:</strong>{" "}
-                        <code style={{ fontSize: "0.85rem" }}>{perm.permission?.token}</code>
-                      </div>
-                      <div>
-                        <strong>Allowance:</strong>{" "}
-                        {perm.permission?.allowance ? formatUnits(BigInt(perm.permission.allowance), 6) : "0"} USDC
-                      </div>
-                      {perm.status && (
-                        <>
-                          <div>
-                            <strong>Status:</strong>{" "}
-                            <span style={{ color: perm.status.isActive ? "#4ade80" : "#f87171" }}>
-                              {perm.status.isActive ? "✓ Active" : "✗ Inactive"}
-                            </span>
-                          </div>
-                          <div>
-                            <strong>Remaining Spend:</strong>{" "}
-                            {perm.status.remainingSpend ? formatUnits(perm.status.remainingSpend, 6) : "0"} USDC
-                          </div>
-                          {perm.status.isActive && (
-                            <div style={{ marginTop: "16px" }}>
-                              <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
-                                Amount to Spend (USDC):
-                              </label>
-                              <input
-                                type="number"
-                                value={spendAmount}
-                                onChange={(e) => setSpendAmount(e.target.value)}
-                                placeholder="1"
-                                step="0.01"
-                                min="0"
-                                disabled={spendingFromPermission === idx}
-                                style={{
-                                  width: "100%",
-                                  padding: "12px",
-                                  borderRadius: "8px",
-                                  border: "1px solid rgba(255, 255, 255, 0.3)",
-                                  background: "rgba(0, 0, 0, 0.2)",
-                                  color: "white",
-                                  fontSize: "1rem",
-                                  marginBottom: "12px",
-                                }}
-                              />
-                              <button
-                                onClick={() => useSpendPermission(idx)}
-                                disabled={spendingFromPermission === idx || parseFloat(spendAmount) <= 0}
-                                className="connect-button"
-                                style={{ width: "fit-content", marginRight: "12px" }}
-                              >
-                                {spendingFromPermission === idx ? "Spending..." : "Use Permission to Spend"}
-                              </button>
-                            </div>
-                          )}
-                          <button
-                            onClick={() => revokePermission(idx)}
-                            disabled={revokingPermissionId === idx}
-                            className="connect-button"
-                            style={{ width: "fit-content", marginTop: "12px" }}
-                          >
-                            {revokingPermissionId === idx ? "Revoking..." : "Revoke Permission"}
-                          </button>
-                        </>
-                      )}
-                    </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div>
+                    <strong>Token:</strong>{" "}
+                    <code style={{ fontSize: "0.85rem" }}>{perm.permission?.token}</code>
                   </div>
-                ))}
+                  <div>
+                    <strong>Allowance:</strong>{" "}
+                    {perm.permission?.allowance ? formatUnits(BigInt(perm.permission.allowance), 6) : "0"} USDC
+                  </div>
+                  {perm.status && (
+                    <>
+                      <div>
+                        <strong>Status:</strong>{" "}
+                        <span style={{ color: perm.status.isActive ? "#4ade80" : "#f87171" }}>
+                          {perm.status.isActive ? "✓ Active" : "✗ Inactive"}
+                        </span>
+                      </div>
+                      <div>
+                        <strong>Remaining Spend:</strong>{" "}
+                        {perm.status.remainingSpend ? formatUnits(perm.status.remainingSpend, 6) : "0"} USDC
+                      </div>
+                      {perm.status.isActive && (
+                        <div style={{ marginTop: "16px" }}>
+                          <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
+                            Amount to Spend (USDC):
+                          </label>
+                          <input
+                            type="number"
+                            value={spendAmount}
+                            onChange={(e) => setSpendAmount(e.target.value)}
+                            placeholder="1"
+                            step="0.01"
+                            min="0"
+                            disabled={spendingFromPermission === idx}
+                            style={{
+                              width: "100%",
+                              padding: "12px",
+                              borderRadius: "8px",
+                              border: "1px solid rgba(255, 255, 255, 0.3)",
+                              background: "rgba(0, 0, 0, 0.2)",
+                              color: "white",
+                              fontSize: "1rem",
+                              marginBottom: "12px",
+                            }}
+                          />
+                          <button
+                            onClick={() => useSpendPermission(idx)}
+                            disabled={spendingFromPermission === idx || parseFloat(spendAmount) <= 0}
+                            className="connect-button"
+                            style={{ width: "fit-content", marginRight: "12px" }}
+                          >
+                            {spendingFromPermission === idx ? "Spending..." : "Use Permission to Spend"}
+                          </button>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => revokePermission(idx)}
+                        disabled={revokingPermissionId === idx}
+                        className="connect-button"
+                        style={{ width: "fit-content", marginTop: "12px" }}
+                      >
+                        {revokingPermissionId === idx ? "Revoking..." : "Revoke Permission"}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            )}
+            ))}
           </div>
+        )}
+      </div>
 
-          {/* Send USDC */}
-          <div style={{
-            marginBottom: "32px",
-            background: "rgba(255, 255, 255, 0.1)",
-            backdropFilter: "blur(10px)",
-            borderRadius: "16px",
-            padding: "32px",
-            border: "1px solid rgba(255, 255, 255, 0.2)",
-          }}>
-            <h2 style={{ fontSize: "1.5rem", marginBottom: "16px" }}>Send USDC from Sub Account</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div>
-                <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
-                  Recipient Address:
-                </label>
-                <input
-                  type="text"
-                  value={recipientAddress}
-                  onChange={(e) => setRecipientAddress(e.target.value)}
-                  placeholder="0x..."
-                  disabled={sendLoading}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(255, 255, 255, 0.3)",
-                    background: "rgba(0, 0, 0, 0.2)",
-                    color: "white",
-                    fontSize: "1rem",
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
-                  Amount (USDC):
-                </label>
-                <input
-                  type="number"
-                  value={usdcAmount}
-                  onChange={(e) => setUsdcAmount(e.target.value)}
-                  placeholder="1"
-                  step="0.01"
-                  min="0"
-                  disabled={sendLoading}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    borderRadius: "8px",
-                    border: "1px solid rgba(255, 255, 255, 0.3)",
-                    background: "rgba(0, 0, 0, 0.2)",
-                    color: "white",
-                    fontSize: "1rem",
-                  }}
-                />
-              </div>
-              <button
-                onClick={sendUSDC}
-                disabled={sendLoading || !recipientAddress || parseFloat(usdcAmount) <= 0}
-                className="connect-button"
-                style={{ width: "fit-content" }}
-              >
-                {sendLoading ? "Sending..." : `Send ${usdcAmount} USDC`}
-              </button>
-              {sendStatus && (
-                <p style={{ 
-                  fontSize: "0.9rem", 
-                  color: sendStatus.includes("✓") ? "#4ade80" : sendStatus.includes("Error") ? "#f87171" : "white",
-                  marginTop: "8px"
-                }}>
-                  {sendStatus}
-                </p>
-              )}
-            </div>
+      {/* Send USDC */}
+      <div style={{
+        marginBottom: "32px",
+        background: "rgba(255, 255, 255, 0.1)",
+        backdropFilter: "blur(10px)",
+        borderRadius: "16px",
+        padding: "32px",
+        border: "1px solid rgba(255, 255, 255, 0.2)",
+      }}>
+        <h2 style={{ fontSize: "1.5rem", marginBottom: "16px" }}>Send USDC from Sub Account</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
+              Recipient Address:
+            </label>
+            <input
+              type="text"
+              value={recipientAddress}
+              onChange={(e) => setRecipientAddress(e.target.value)}
+              placeholder="0x..."
+              disabled={sendLoading}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "8px",
+                border: "1px solid rgba(255, 255, 255, 0.3)",
+                background: "rgba(0, 0, 0, 0.2)",
+                color: "white",
+                fontSize: "1rem",
+              }}
+            />
           </div>
-        </>
-      )}
+          <div>
+            <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem" }}>
+              Amount (USDC):
+            </label>
+            <input
+              type="number"
+              value={usdcAmount}
+              onChange={(e) => setUsdcAmount(e.target.value)}
+              placeholder="1"
+              step="0.01"
+              min="0"
+              disabled={sendLoading}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "8px",
+                border: "1px solid rgba(255, 255, 255, 0.3)",
+                background: "rgba(0, 0, 0, 0.2)",
+                color: "white",
+                fontSize: "1rem",
+              }}
+            />
+          </div>
+          <button
+            onClick={sendUSDC}
+            disabled={sendLoading || !recipientAddress || parseFloat(usdcAmount) <= 0}
+            className="connect-button"
+            style={{ width: "fit-content" }}
+          >
+            {sendLoading ? "Sending..." : `Send ${usdcAmount} USDC`}
+          </button>
+          {sendStatus && (
+            <p style={{ 
+              fontSize: "0.9rem", 
+              color: sendStatus.includes("✓") ? "#4ade80" : sendStatus.includes("Error") ? "#f87171" : "white",
+              marginTop: "8px"
+            }}>
+              {sendStatus}
+            </p>
+          )}
+        </div>
+      </div>
 
       <footer className="footer">
         <p>BasePost - Powered by Base Sub Accounts + x402</p>
