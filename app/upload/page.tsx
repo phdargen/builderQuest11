@@ -22,7 +22,7 @@ const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 
 export default function UploadPage() {
   const router = useRouter();
-  const { connected, provider, subAccountAddress, universalAddress } = useBaseAccount();
+  const { connected, connect, loading: connectLoading, provider, subAccountAddress, universalAddress } = useBaseAccount();
   
   const [title, setTitle] = useState("");
   const [teaser, setTeaser] = useState("");
@@ -247,15 +247,23 @@ export default function UploadPage() {
   if (!connected) {
     return (
       <div className="container">
-        <div className="article-container">
-          <Link href="/" className="back-link">
-            ← Back to Home
-          </Link>
-          <h1 className="article-page-title">Upload Article</h1>
-          <p style={{ textAlign: "center", marginTop: "2rem" }}>
-            Please connect your wallet to upload articles.
-          </p>
-        </div>
+        <header className="header">
+          <h1 className="site-title">Upload Article</h1>
+          <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={connect}
+              disabled={connectLoading}
+              className="connect-button"
+            >
+              {connectLoading ? "Connecting..." : "Login"}
+            </button>
+            <Link href="/">
+              <button className="connect-button">
+                Back to Home
+              </button>
+            </Link>
+          </div>
+        </header>
       </div>
     );
   }
@@ -267,29 +275,34 @@ export default function UploadPage() {
           ← Back to Home
         </Link>
         
-        <h1 className="article-page-title">Upload New Article</h1>
+        <h1 className="article-page-title">Publish New BasePost</h1>
         <div style={{ 
           textAlign: "center", 
           marginBottom: "2.5rem",
-          background: "rgba(255, 255, 255, 0.15)",
-          padding: "1rem",
-          borderRadius: "12px",
-          border: "1px solid rgba(255, 255, 255, 0.25)"
+          background: "linear-gradient(135deg, rgba(0, 82, 255, 0.15) 0%, rgba(255, 255, 255, 0.15) 100%)",
+          padding: "1.75rem",
+          borderRadius: "16px",
+          border: "2px solid rgba(0, 82, 255, 0.3)",
+          boxShadow: "0 8px 32px rgba(0, 82, 255, 0.1)"
         }}>
-          <p style={{ 
-            fontSize: "1.2rem", 
-            fontWeight: "600",
-            margin: "0"
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.75rem",
+            maxWidth: "600px",
+            margin: "0 auto",
+            textAlign: "left"
           }}>
-            💰 Cost: $0.10
-          </p>
-          <p style={{ 
-            fontSize: "0.95rem", 
-            opacity: "0.9",
-            margin: "0.5rem 0 0 0"
-          }}>
-            Your article will be listed immediately
-          </p>
+            <div style={{ fontSize: "0.95rem", opacity: "0.95" }}>
+              🔐 Your BasePost will be published behind a <strong>x402 protected paywall</strong>
+            </div>
+            <div style={{ fontSize: "0.95rem", opacity: "0.95" }}>
+              💰 To unlock your content, users/agents need to pay your <strong>desired price</strong>
+            </div>
+            <div style={{ fontSize: "0.95rem", opacity: "0.95" }}>
+              ⚡ You receive <strong>immediate payments</strong> for each access to your base account
+            </div>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} style={{ maxWidth: "800px", margin: "0 auto" }}>
