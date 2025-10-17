@@ -9,11 +9,16 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.911.0",
     "@base-org/account": "2.4.0",
+    "@coinbase/onchainkit": "^1.1.1",
     "@coinbase/x402": "^0.6.6",
+    "@upstash/redis": "^1.35.6",
     "next": "^15.2.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "uuid": "^13.0.0",
     "viem": "^2.21.4",
     "x402-fetch": "^0.6.6",
     "x402-next": "^0.6.5"

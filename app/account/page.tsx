@@ -4,13 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Article } from "@/lib/articles";
 import { ArticleStats } from "@/lib/redis";
-import { useBaseAccount } from "./providers";
+import { useBaseAccount } from "../providers";
 import { wrapFetchWithPayment } from "x402-fetch";
 import { createWalletClient, custom, parseUnits, encodeFunctionData } from "viem";
 import { baseSepolia } from "viem/chains";
 import Link from "next/link";
 import { getUserInfoClient, type NeynarUserInfo } from "@/lib/neynar";
-import Avatar from "./components/Avatar";
+import Avatar from "../components/Avatar";
 
 const USDC_BASE_SEPOLIA = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 
@@ -27,20 +27,17 @@ const ERC20_ABI = [
   },
 ] as const;
 
-type SortOption = "recent" | "popular" | "top-rated";
-
-export default function Home() {
+export default function AccountPage() {
   const router = useRouter();
   const { connected, connect, loading: connectLoading, provider, subAccountAddress, universalAddress } = useBaseAccount();
   const [loadingArticle, setLoadingArticle] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [myArticles, setMyArticles] = useState<Article[]>([]);
   const [loadingArticles, setLoadingArticles] = useState(true);
   const [statsMap, setStatsMap] = useState<Record<string, ArticleStats>>({});
-  const [sortBy, setSortBy] = useState<SortOption>("recent");
   const [userInfo, setUserInfo] = useState<NeynarUserInfo | null>(null);
 
-  // Load articles and stats on mount
+  // Load articles and stats
   useEffect(() => {
     async function fetchArticlesAndStats() {
       try {
@@ -50,8 +47,14 @@ export default function Home() {
         ]);
         
         if (articlesRes.ok) {
-          const data = await articlesRes.json();
-          setArticles(data);
+          const allArticles = await articlesRes.json();
+          // Filter for user's articles
+          if (universalAddress) {
+            const filtered = allArticles.filter(
+              (article: Article) => article.authorAddress.toLowerCase() === universalAddress.toLowerCase()
+            );
+            setMyArticles(filtered);
+          }
         }
 
         if (statsRes.ok) {
@@ -64,8 +67,13 @@ export default function Home() {
         setLoadingArticles(false);
       }
     }
-    fetchArticlesAndStats();
-  }, []);
+    
+    if (universalAddress) {
+      fetchArticlesAndStats();
+    } else {
+      setLoadingArticles(false);
+    }
+  }, [universalAddress]);
 
   // Fetch user info when connected
   useEffect(() => {
@@ -79,22 +87,6 @@ export default function Home() {
     }
     fetchUserInfo();
   }, [universalAddress, connected]);
-
-  // Sort articles based on selected option
-  const sortedArticles = [...articles].sort((a, b) => {
-    if (sortBy === "recent") {
-      return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
-    } else if (sortBy === "popular") {
-      const aStats = statsMap[a.slug] || { totalPurchases: 0 };
-      const bStats = statsMap[b.slug] || { totalPurchases: 0 };
-      return bStats.totalPurchases - aStats.totalPurchases;
-    } else if (sortBy === "top-rated") {
-      const aStats = statsMap[a.slug] || { averageScore: 0 };
-      const bStats = statsMap[b.slug] || { averageScore: 0 };
-      return (bStats.averageScore || 0) - (aStats.averageScore || 0);
-    }
-    return 0;
-  });
 
   const unlockArticle = async (slug: string, priceUsd: string) => {
     if (!connected) {
@@ -244,13 +236,25 @@ export default function Home() {
     );
   };
 
-  return (
-    <div className="container">
-      <header className="header">
-        <h1 className="site-title">Based News</h1>
-        <p className="site-subtitle">Premium Blockchain & Tech Journalism</p>
-        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-          {!connected ? (
+  const calculateEarnings = (article: Article) => {
+    const stats = statsMap[article.slug] || { totalPurchases: 0 };
+    const priceValue = parseFloat(article.priceUsd.replace("$", ""));
+    return priceValue * stats.totalPurchases;
+  };
+
+  const calculateTotalEarnings = () => {
+    return myArticles.reduce((total, article) => {
+      return total + calculateEarnings(article);
+    }, 0);
+  };
+
+  if (!connected) {
+    return (
+      <div className="container">
+        <header className="header">
+          <h1 className="site-title">My Account</h1>
+          <p className="site-subtitle">View your published articles and earnings</p>
+          <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
             <button
               onClick={connect}
               disabled={connectLoading}
@@ -258,17 +262,32 @@ export default function Home() {
             >
               {connectLoading ? "Connecting..." : "Connect Wallet"}
             </button>
-          ) : (
-            <div className="connected-badge" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              {userInfo && (
-                <Avatar pfpUrl={userInfo.pfpUrl} displayName={userInfo.displayName} size={24} />
-              )}
-              {userInfo ? userInfo.displayName : "Connected"}
-            </div>
-          )}
-          <Link href="/account">
+            <Link href="/">
+              <button className="connect-button" style={{ background: "#666" }}>
+                Back to Home
+              </button>
+            </Link>
+          </div>
+        </header>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container">
+      <header className="header">
+        <h1 className="site-title">My Account</h1>
+        <p className="site-subtitle">Your published articles and earnings</p>
+        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+          <div className="connected-badge" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {userInfo && (
+              <Avatar pfpUrl={userInfo.pfpUrl} displayName={userInfo.displayName} size={24} />
+            )}
+            {userInfo ? userInfo.displayName : "Connected"}
+          </div>
+          <Link href="/">
             <button className="connect-button">
-              My Account
+              Back to Home
             </button>
           </Link>
           <Link href="/upload">
@@ -277,42 +296,51 @@ export default function Home() {
             </button>
           </Link>
         </div>
+        {universalAddress && (
+          <div style={{ marginTop: "16px", fontSize: "0.9rem", opacity: 0.9 }}>
+            <p>{userInfo && `${userInfo.displayName} • `}Universal Account: {universalAddress}</p>
+          </div>
+        )}
       </header>
 
-      <div style={{ marginBottom: "32px", textAlign: "center" }}>
-        <label style={{ marginRight: "12px", fontSize: "1rem", fontWeight: "500" }}>
-          Sort by:
-        </label>
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortOption)}
+      {/* Earnings Summary */}
+      {myArticles.length > 0 && (
+        <div
           style={{
-            padding: "8px 16px",
-            borderRadius: "8px",
-            border: "1px solid rgba(255, 255, 255, 0.3)",
-            background: "rgba(0, 0, 0, 0.2)",
-            color: "white",
-            fontSize: "1rem",
-            cursor: "pointer",
+            marginBottom: "32px",
+            background: "rgba(255, 255, 255, 0.1)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "16px",
+            padding: "32px",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            textAlign: "center",
           }}
         >
-          <option value="recent">Recent</option>
-          <option value="popular">Popular</option>
-          <option value="top-rated">Top Rated</option>
-        </select>
-      </div>
+          <h2 style={{ fontSize: "1.5rem", marginBottom: "16px" }}>Total Earnings</h2>
+          <p style={{ fontSize: "2.5rem", fontWeight: "bold", color: "#4ade80" }}>
+            ${calculateTotalEarnings().toFixed(2)} USDC
+          </p>
+          <p style={{ fontSize: "1rem", opacity: 0.8, marginTop: "8px" }}>
+            From {myArticles.length} {myArticles.length === 1 ? "article" : "articles"}
+          </p>
+        </div>
+      )}
 
       <main className="articles-grid">
         {loadingArticles ? (
           <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "2rem" }}>
-            Loading articles...
+            Loading your articles...
           </div>
-        ) : articles.length === 0 ? (
+        ) : myArticles.length === 0 ? (
           <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "2rem" }}>
-            No articles yet. Be the first to upload!
+            <Link href="/upload">
+              <button className="connect-button">
+                Publish Your First Article
+              </button>
+            </Link>
           </div>
         ) : (
-          sortedArticles.map((article) => {
+          myArticles.map((article) => {
             const stats = statsMap[article.slug] || {
               totalPurchases: 0,
               averageScore: null,
@@ -320,6 +348,7 @@ export default function Home() {
               purchasedBy: [],
               totalRatings: 0,
             };
+            const earnings = calculateEarnings(article);
             
             return (
             <div key={article.slug} className="article-card">
@@ -332,14 +361,9 @@ export default function Home() {
               <div className="article-content">
                 <h2 className="article-title">{article.title}</h2>
                 <p className="article-teaser">{article.teaser}</p>
-                <div style={{ fontSize: "0.85rem", color: "#666", marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Avatar 
-                    pfpUrl={article.authorPfpUrl} 
-                    displayName={article.authorDisplayName} 
-                    size={24} 
-                  />
-                  <span>By {article.authorDisplayName} • {formatDate(article.uploadedAt)}</span>
-                </div>
+                <p style={{ fontSize: "0.85rem", color: "#666", marginTop: "0.5rem" }}>
+                  Published {formatDate(article.uploadedAt)}
+                </p>
                 <div style={{ 
                   fontSize: "0.85rem", 
                   marginTop: "0.75rem",
@@ -359,6 +383,19 @@ export default function Home() {
                       </span>
                     )}
                   </div>
+                  <div style={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: "8px",
+                    marginTop: "8px",
+                    padding: "8px",
+                    background: "rgba(74, 222, 128, 0.2)",
+                    borderRadius: "8px",
+                  }}>
+                    <span style={{ fontWeight: "600", color: "#4ade80" }}>
+                      💰 Earned: ${earnings.toFixed(2)} USDC
+                    </span>
+                  </div>
                 </div>
                 <div className="article-footer-vertical">
                   {errors[article.slug] && (
@@ -366,10 +403,10 @@ export default function Home() {
                   )}
                   <button
                     onClick={() => unlockArticle(article.slug, article.priceUsd)}
-                    disabled={loadingArticle === article.slug || !connected}
+                    disabled={loadingArticle === article.slug}
                     className="unlock-button-small"
                   >
-                    {loadingArticle === article.slug ? "Unlocking..." : `${article.priceUsd} USDC`}
+                    {loadingArticle === article.slug ? "Unlocking..." : `View Article (${article.priceUsd})`}
                   </button>
                 </div>
               </div>

@@ -8,8 +8,8 @@ export async function GET(
   const { slug } = await ctx.params;
 
   // Find the article in the data
-  const article = getArticle(slug);
-  
+  const article = await getArticle(slug);
+
   if (!article) {
     return new Response("Article not found", { status: 404 });
   }
