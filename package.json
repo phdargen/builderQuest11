@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@base-org/account": "latest",
+    "@base-org/account": "2.4.0",
     "@coinbase/x402": "^0.6.6",
     "next": "^15.2.2",
     "react": "^19.0.0",
@@ -25,4 +25,3 @@
     "typescript": "^5"
   }
 }
-
