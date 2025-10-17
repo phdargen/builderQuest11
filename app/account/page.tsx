@@ -559,7 +559,7 @@ export default function AccountPage() {
   };
 
   const calculateEarnings = (article: Article) => {
-    const stats = statsMap[article.slug] || { totalPurchases: 0 };
+    const stats = statsMap[article.slug] || { totalPurchases: 0, uniquePurchasers: 0, averageScore: null, lastPurchaseTimestamp: null, purchasedBy: [], recentPurchases: [], totalRatings: 0 };
     const priceValue = parseFloat(article.priceUsd.replace("$", ""));
     return priceValue * stats.totalPurchases;
   };
@@ -707,9 +707,11 @@ export default function AccountPage() {
           myArticles.map((article) => {
             const stats = statsMap[article.slug] || {
               totalPurchases: 0,
+              uniquePurchasers: 0,
               averageScore: null,
               lastPurchaseTimestamp: null,
               purchasedBy: [],
+              recentPurchases: [],
               totalRatings: 0,
             };
             const earnings = calculateEarnings(article);

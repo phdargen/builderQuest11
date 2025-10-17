@@ -21,7 +21,8 @@ export interface RatingRecord {
 }
 
 export interface ArticleStats {
-  totalPurchases: number;
+  totalPurchases: number; // Total number of purchases (includes repeat purchases)
+  uniquePurchasers: number; // Number of unique purchasers
   lastPurchaseTimestamp: number | null;
   purchasedBy: string[];
   recentPurchases: PurchaseRecord[]; // Last 10 purchases with user info
@@ -47,10 +48,15 @@ export async function recordPurchase(
     timestamp: Date.now(),
   };
   
-  await redis.hset(
-    `article:${slug}:purchases`,
-    { [universalAddress]: JSON.stringify(record) }
-  );
+  // Store latest purchase info per user (hash key = universalAddress)
+  // and increment total purchase counter
+  await Promise.all([
+    redis.hset(
+      `article:${slug}:purchases`,
+      { [universalAddress]: JSON.stringify(record) }
+    ),
+    redis.incr(`article:${slug}:purchase_count`)
+  ]);
 }
 
 // Helper function to record or update a rating
@@ -87,16 +93,18 @@ export async function getUserRating(
 
 // Helper function to get stats for a single article
 export async function getArticleStats(slug: string): Promise<ArticleStats> {
-  const [purchases, ratings] = await Promise.all([
+  const [purchases, ratings, purchaseCount] = await Promise.all([
     redis.hgetall(`article:${slug}:purchases`),
     redis.hgetall(`article:${slug}:ratings`),
+    redis.get(`article:${slug}:purchase_count`),
   ]);
 
   const purchaseRecords = purchases as Record<string, any> || {};
   const ratingRecords = ratings as Record<string, any> || {};
 
   const purchasedBy = Object.keys(purchaseRecords);
-  const totalPurchases = purchasedBy.length;
+  const uniquePurchasers = purchasedBy.length;
+  const totalPurchases = (purchaseCount as number) || 0;
 
   // Parse all purchase records and sort by timestamp (most recent first)
   const allPurchases: PurchaseRecord[] = Object.values(purchaseRecords)
@@ -131,6 +139,7 @@ export async function getArticleStats(slug: string): Promise<ArticleStats> {
 
   return {
     totalPurchases,
+    uniquePurchasers,
     lastPurchaseTimestamp,
     purchasedBy,
     recentPurchases,
@@ -152,18 +161,21 @@ export async function getMultipleArticlesStats(
   slugs.forEach((slug) => {
     pipeline.hgetall(`article:${slug}:purchases`);
     pipeline.hgetall(`article:${slug}:ratings`);
+    pipeline.get(`article:${slug}:purchase_count`);
   });
 
   const results = await pipeline.exec();
   const statsMap: Record<string, ArticleStats> = {};
 
   slugs.forEach((slug, index) => {
-    const purchasesIndex = index * 2;
-    const ratingsIndex = index * 2 + 1;
+    const purchasesIndex = index * 3;
+    const ratingsIndex = index * 3 + 1;
+    const purchaseCountIndex = index * 3 + 2;
 
     // Upstash pipeline results might be wrapped or unwrapped
     let purchasesData = results[purchasesIndex];
     let ratingsData = results[ratingsIndex];
+    let purchaseCountData = results[purchaseCountIndex];
     
     // Check if results are wrapped (e.g., { result: data } or { data: ... })
     if (purchasesData && typeof purchasesData === 'object' && 'result' in purchasesData) {
@@ -172,12 +184,16 @@ export async function getMultipleArticlesStats(
     if (ratingsData && typeof ratingsData === 'object' && 'result' in ratingsData) {
       ratingsData = (ratingsData as any).result;
     }
+    if (purchaseCountData && typeof purchaseCountData === 'object' && 'result' in purchaseCountData) {
+      purchaseCountData = (purchaseCountData as any).result;
+    }
 
     const purchases = (purchasesData as Record<string, any>) || {};
     const ratings = (ratingsData as Record<string, any>) || {};
 
     const purchasedBy = Object.keys(purchases);
-    const totalPurchases = purchasedBy.length;
+    const uniquePurchasers = purchasedBy.length;
+    const totalPurchases = (purchaseCountData as number) || 0;
 
     // Parse all purchase records and sort by timestamp (most recent first)
     const allPurchases: PurchaseRecord[] = Object.values(purchases)
@@ -212,6 +228,7 @@ export async function getMultipleArticlesStats(
 
     statsMap[slug] = {
       totalPurchases,
+      uniquePurchasers,
       lastPurchaseTimestamp,
       purchasedBy,
       recentPurchases,

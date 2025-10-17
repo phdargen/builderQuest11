@@ -74,12 +74,12 @@ export default function Home() {
     if (sortBy === "recent") {
       return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
     } else if (sortBy === "popular") {
-      const aStats = statsMap[a.slug] || { totalPurchases: 0 };
-      const bStats = statsMap[b.slug] || { totalPurchases: 0 };
+      const aStats = statsMap[a.slug] || { totalPurchases: 0, uniquePurchasers: 0, averageScore: null, lastPurchaseTimestamp: null, purchasedBy: [], recentPurchases: [], totalRatings: 0 };
+      const bStats = statsMap[b.slug] || { totalPurchases: 0, uniquePurchasers: 0, averageScore: null, lastPurchaseTimestamp: null, purchasedBy: [], recentPurchases: [], totalRatings: 0 };
       return bStats.totalPurchases - aStats.totalPurchases;
     } else if (sortBy === "top-rated") {
-      const aStats = statsMap[a.slug] || { averageScore: 0 };
-      const bStats = statsMap[b.slug] || { averageScore: 0 };
+      const aStats = statsMap[a.slug] || { totalPurchases: 0, uniquePurchasers: 0, averageScore: null, lastPurchaseTimestamp: null, purchasedBy: [], recentPurchases: [], totalRatings: 0 };
+      const bStats = statsMap[b.slug] || { totalPurchases: 0, uniquePurchasers: 0, averageScore: null, lastPurchaseTimestamp: null, purchasedBy: [], recentPurchases: [], totalRatings: 0 };
       return (bStats.averageScore || 0) - (aStats.averageScore || 0);
     }
     return 0;
@@ -305,6 +305,7 @@ export default function Home() {
           sortedArticles.map((article) => {
             const stats = statsMap[article.slug] || {
               totalPurchases: 0,
+              uniquePurchasers: 0,
               averageScore: null,
               lastPurchaseTimestamp: null,
               purchasedBy: [],
