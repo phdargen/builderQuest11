@@ -42,8 +42,8 @@ export function Providers({ children }: { children: ReactNode }) {
     const initializeSDK = async () => {
       try {
         const sdkInstance = createBaseAccountSDK({
-          appName: "Based News",
-          appLogoUrl: "https://base.org/logo.png",
+          appName: "BasePost",
+          appLogoUrl: process.env.NEXT_PUBLIC_URL+"/basePost.png" as string,
           appChainIds: [chain.id],
           // Quickstart configuration for sub accounts with spend permissions
           subAccounts: {

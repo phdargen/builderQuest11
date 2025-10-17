@@ -1,4 +1,4 @@
-# Based News
+# BasePost
 
 A modern news platform demonstrating Base Account Sub Accounts integration with x402 payment protocol for micropayment-protected articles.
 
