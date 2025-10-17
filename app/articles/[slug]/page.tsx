@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { notFound, useRouter } from "next/navigation";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Article } from "@/lib/articles";
 import { ArticleStats } from "@/lib/redis";
 import { useBaseAccount } from "@/app/providers";
@@ -21,7 +21,9 @@ const chain = process.env.NEXT_PUBLIC_NETWORK === "base" ? base : baseSepolia;
 export default function ArticlePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const slug = params.slug as string;
+  const bodyParam = searchParams.get('body');
   const { universalAddress, connected, connect, loading: connectLoading, provider, subAccountAddress } = useBaseAccount();
   
   const [article, setArticle] = useState<Article | null>(null);
@@ -57,20 +59,19 @@ export default function ArticlePage() {
           setStats(statsData);
         }
 
-        // Try to fetch the full article from the paid endpoint
-        try {
-          const paidArticleRes = await fetch(`/api/articles/${slug}`);
-          if (paidArticleRes.ok) {
-            const paidArticle = await paidArticleRes.json();
-            setArticleBody(paidArticle.body);
-            setShowPaywall(false);
-          } else if (paidArticleRes.status === 402) {
-            // Payment required - show paywall
-            setShowPaywall(true);
-          }
-        } catch (err) {
-          // If fetch fails, assume paywall needed
-          console.log("Article not accessible, showing teaser");
+        // Check if body was passed as query param (coming from payment flow)
+        if (bodyParam && !articleBody) {
+          console.log("Found body in query param");
+          const decodedBody = decodeURIComponent(bodyParam);
+          setArticleBody(decodedBody);
+          setShowPaywall(false);
+          // Clean up the query param after setting the body
+          setTimeout(() => {
+            router.replace(`/articles/${slug}`, { scroll: false });
+          }, 0);
+        } else if (!bodyParam && !articleBody) {
+          // No body param and no body stored - show paywall
+          console.log("No body param, showing paywall");
           setShowPaywall(true);
         }
 
@@ -94,7 +95,7 @@ export default function ArticlePage() {
     }
 
     fetchData();
-  }, [slug, universalAddress]);
+  }, [slug, universalAddress, bodyParam, router]);
 
   // Fetch user info when connected
   useEffect(() => {
@@ -207,9 +208,9 @@ export default function ArticlePage() {
           }
 
           const paidArticle = await res.json();
+          console.log("Article unlocked successfully");
           setArticleBody(paidArticle.body);
           setShowPaywall(false);
-          console.log("Article unlocked successfully");
           return;
         } catch (err) {
           lastError = err instanceof Error ? err : new Error(String(err));

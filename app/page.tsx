@@ -177,8 +177,11 @@ export default function Home() {
             throw new Error(`Failed to unlock article: ${res.status} - ${errorText}`);
           }
 
+          const paidArticle = await res.json();
           console.log("Article unlocked successfully");
-          router.push(`/articles/${slug}`);
+          // Pass body as URL encoded query param
+          const encodedBody = encodeURIComponent(paidArticle.body);
+          router.push(`/articles/${slug}?body=${encodedBody}`);
           return;
         } catch (err) {
           lastError = err instanceof Error ? err : new Error(String(err));
